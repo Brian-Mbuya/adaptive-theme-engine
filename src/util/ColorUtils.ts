@@ -1,39 +1,60 @@
 import type { Color } from '../model/Theme';
 
+/**
+ * Comprehensive color utility module.
+ *
+ * Supports RGB, HSL, Oklab, and OKLCH color spaces.
+ * Includes gamut clamping, WCAG contrast, color harmony helpers,
+ * and a seeded PRNG for deterministic clustering.
+ */
 export class ColorUtils {
+
+    // ─── Construction ────────────────────────────────────────
+
     public static parseColor(hex: string): Color {
         const rgb = this.hexToRgb(hex);
         const hsl = this.rgbToHsl(rgb[0], rgb[1], rgb[2]);
         return { hex, rgb, hsl };
     }
 
-    public static hexToHsl(hex: string): [number, number, number] {
-        const rgb = this.hexToRgb(hex);
-        return this.rgbToHsl(rgb[0], rgb[1], rgb[2]);
+    public static createColor(rgb: [number, number, number]): Color {
+        return {
+            rgb,
+            hex: this.rgbToHex(rgb[0], rgb[1], rgb[2]),
+            hsl: this.rgbToHsl(rgb[0], rgb[1], rgb[2]),
+        };
     }
 
+    // ─── HEX ←→ RGB ─────────────────────────────────────────
+
     static hexToRgb(hex: string): [number, number, number] {
+        const cleaned = hex.replace('#', '');
         let r = 0, g = 0, b = 0;
-        if (hex.length === 4) {
-            r = parseInt(hex[1] + hex[1], 16);
-            g = parseInt(hex[2] + hex[2], 16);
-            b = parseInt(hex[3] + hex[3], 16);
-        } else if (hex.length === 7) {
-            r = parseInt(hex.slice(1, 3), 16);
-            g = parseInt(hex.slice(3, 5), 16);
-            b = parseInt(hex.slice(5, 7), 16);
+        if (cleaned.length === 3) {
+            r = parseInt(cleaned[0] + cleaned[0], 16);
+            g = parseInt(cleaned[1] + cleaned[1], 16);
+            b = parseInt(cleaned[2] + cleaned[2], 16);
+        } else if (cleaned.length === 6) {
+            r = parseInt(cleaned.slice(0, 2), 16);
+            g = parseInt(cleaned.slice(2, 4), 16);
+            b = parseInt(cleaned.slice(4, 6), 16);
         }
         return [r, g, b];
     }
 
     static rgbToHex(r: number, g: number, b: number): string {
-        return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+        const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+        return '#' + (1 << 24 | clamp(r) << 16 | clamp(g) << 8 | clamp(b))
+            .toString(16).slice(1).toUpperCase();
     }
+
+    // ─── RGB ←→ HSL ──────────────────────────────────────────
 
     static rgbToHsl(r: number, g: number, b: number): [number, number, number] {
         r /= 255; g /= 255; b /= 255;
         const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h = 0, s = 0, l = (max + min) / 2;
+        let h = 0, s = 0;
+        const l = (max + min) / 2;
 
         if (max !== min) {
             const d = max - min;
@@ -51,7 +72,7 @@ export class ColorUtils {
 
     static hslToRgb(h: number, s: number, l: number): [number, number, number] {
         h /= 360; s /= 100; l /= 100;
-        let r, g, b;
+        let r: number, g: number, b: number;
 
         if (s === 0) {
             r = g = b = l;
@@ -59,20 +80,24 @@ export class ColorUtils {
             const hue2rgb = (p: number, q: number, t: number) => {
                 if (t < 0) t += 1;
                 if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
                 return p;
             };
-
             const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
             const p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1/3);
+            r = hue2rgb(p, q, h + 1 / 3);
             g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1/3);
+            b = hue2rgb(p, q, h - 1 / 3);
         }
 
         return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    public static hexToHsl(hex: string): [number, number, number] {
+        const rgb = this.hexToRgb(hex);
+        return this.rgbToHsl(rgb[0], rgb[1], rgb[2]);
     }
 
     static hslToHex(h: number, s: number, l: number): string {
@@ -80,43 +105,21 @@ export class ColorUtils {
         return this.rgbToHex(rgb[0], rgb[1], rgb[2]);
     }
 
-    static getLuminance(r: number, g: number, b: number): number {
-        const a = [r, g, b].map(function (v) {
-            v /= 255;
-            return v <= 0.03928
-                ? v / 12.92
-                : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
-        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
-    }
+    // ─── sRGB ←→ Linear ─────────────────────────────────────
 
-    static getContrastRatio(rgb1: [number, number, number], rgb2: [number, number, number]): number {
-        const l1 = this.getLuminance(rgb1[0], rgb1[1], rgb1[2]);
-        const l2 = this.getLuminance(rgb2[0], rgb2[1], rgb2[2]);
-        return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-    }
-
-    static getAccessibleTextColor(backgroundHex: string): string {
-        const rgb = this.hexToRgb(backgroundHex);
-        const whiteContrast = this.getContrastRatio(rgb, [255, 255, 255]);
-        const blackContrast = this.getContrastRatio(rgb, [30, 41, 59]); // #1E293B
-        // Require WCAG AA contrast (4.5:1)
-        if (whiteContrast >= 4.5 || whiteContrast > blackContrast) {
-            return '#FFFFFF';
-        }
-        return '#1E293B';
-    }
-
-    // --- Oklab Colorspace Methods ---
     static srgbToLinear(val: number): number {
         val /= 255;
         return val >= 0.04045 ? Math.pow((val + 0.055) / 1.055, 2.4) : val / 12.92;
     }
 
     static linearToSrgb(val: number): number {
-        const v = val >= 0.0031308 ? 1.055 * Math.pow(val, 1.0 / 2.4) - 0.055 : 12.92 * val;
+        const v = val >= 0.0031308
+            ? 1.055 * Math.pow(val, 1.0 / 2.4) - 0.055
+            : 12.92 * val;
         return Math.max(0, Math.min(255, Math.round(v * 255)));
     }
+
+    // ─── RGB ←→ Oklab ────────────────────────────────────────
 
     static rgbToOklab(r: number, g: number, b: number): [number, number, number] {
         const lr = this.srgbToLinear(r);
@@ -157,5 +160,167 @@ export class ColorUtils {
     static oklabToHex(L: number, a: number, b: number): string {
         const rgb = this.oklabToRgb(L, a, b);
         return this.rgbToHex(rgb[0], rgb[1], rgb[2]);
+    }
+
+    // ─── RGB ←→ OKLCH (cylindrical Oklab) ────────────────────
+
+    static rgbToOklch(r: number, g: number, b: number): [number, number, number] {
+        const [L, a, bVal] = this.rgbToOklab(r, g, b);
+        const C = Math.sqrt(a * a + bVal * bVal);
+        let H = Math.atan2(bVal, a) * (180 / Math.PI);
+        if (H < 0) H += 360;
+        return [L, C, H];
+    }
+
+    static oklchToRgb(L: number, C: number, H: number): [number, number, number] {
+        const hRad = H * (Math.PI / 180);
+        const a = C * Math.cos(hRad);
+        const b = C * Math.sin(hRad);
+        return this.oklabToRgb(L, a, b);
+    }
+
+    static oklchToHex(L: number, C: number, H: number): string {
+        const rgb = this.oklchToRgb(L, C, H);
+        return this.rgbToHex(rgb[0], rgb[1], rgb[2]);
+    }
+
+    // ─── Gamut Clamping ──────────────────────────────────────
+    /**
+     * Clamp an OKLCH color into the sRGB gamut by reducing chroma
+     * while preserving hue and lightness. Uses binary search for accuracy.
+     */
+    static gamutClampOklch(L: number, C: number, H: number): [number, number, number] {
+        // Clamp lightness to valid range
+        L = Math.max(0, Math.min(1, L));
+
+        if (C <= 0) return [L, 0, H];
+
+        // Check if already in gamut
+        if (this.isInSrgbGamut(L, C, H)) return [L, C, H];
+
+        // Binary search to find max in-gamut chroma
+        let lo = 0;
+        let hi = C;
+        for (let i = 0; i < 20; i++) {
+            const mid = (lo + hi) / 2;
+            if (this.isInSrgbGamut(L, mid, H)) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+
+        return [L, lo, H];
+    }
+
+    private static isInSrgbGamut(L: number, C: number, H: number): boolean {
+        const rgb = this.oklchToRgb(L, C, H);
+        // Check if all channels are within 0–255 (with a tiny tolerance for rounding)
+        return rgb.every(v => v >= -0.5 && v <= 255.5);
+    }
+
+    /**
+     * Create a gamut-safe hex color from OKLCH values.
+     */
+    static safeOklchToHex(L: number, C: number, H: number): string {
+        const [clL, clC, clH] = this.gamutClampOklch(L, C, H);
+        return this.oklchToHex(clL, clC, clH);
+    }
+
+    // ─── Color Harmony (OKLCH hue rotation) ──────────────────
+
+    /**
+     * Rotate hue of an RGB color by the specified degrees in OKLCH space.
+     * Returns a gamut-clamped RGB result.
+     */
+    static rotateHue(rgb: [number, number, number], degrees: number): [number, number, number] {
+        const [L, C, H] = this.rgbToOklch(rgb[0], rgb[1], rgb[2]);
+        const newH = ((H + degrees) % 360 + 360) % 360;
+        const [clL, clC, clH] = this.gamutClampOklch(L, C, newH);
+        return this.oklchToRgb(clL, clC, clH);
+    }
+
+    /**
+     * Get harmony colors for a base RGB color.
+     */
+    static getHarmonyColors(
+        baseRgb: [number, number, number],
+        harmony: 'Complementary' | 'Analogous' | 'Triadic' | 'Split-Complementary'
+    ): [number, number, number][] {
+        switch (harmony) {
+            case 'Complementary':
+                return [this.rotateHue(baseRgb, 180)];
+            case 'Analogous':
+                return [this.rotateHue(baseRgb, 30), this.rotateHue(baseRgb, -30)];
+            case 'Triadic':
+                return [this.rotateHue(baseRgb, 120), this.rotateHue(baseRgb, 240)];
+            case 'Split-Complementary':
+                return [this.rotateHue(baseRgb, 150), this.rotateHue(baseRgb, 210)];
+        }
+    }
+
+    // ─── WCAG Contrast ───────────────────────────────────────
+
+    static getLuminance(r: number, g: number, b: number): number {
+        const a = [r, g, b].map(v => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+    }
+
+    static getContrastRatio(
+        rgb1: [number, number, number],
+        rgb2: [number, number, number]
+    ): number {
+        const l1 = this.getLuminance(rgb1[0], rgb1[1], rgb1[2]);
+        const l2 = this.getLuminance(rgb2[0], rgb2[1], rgb2[2]);
+        return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    }
+
+    static getWcagLevel(contrast: number): 'AAA' | 'AA' | 'Fail' {
+        if (contrast >= 7) return 'AAA';
+        if (contrast >= 4.5) return 'AA';
+        return 'Fail';
+    }
+
+    static getAccessibleTextColor(backgroundHex: string): string {
+        const rgb = this.hexToRgb(backgroundHex);
+        const whiteContrast = this.getContrastRatio(rgb, [255, 255, 255]);
+        const darkContrast = this.getContrastRatio(rgb, [30, 41, 59]);
+        // Prefer whichever meets WCAG AA, biased toward white for aesthetics
+        if (whiteContrast >= 4.5) return '#FFFFFF';
+        if (darkContrast >= 4.5) return '#1E293B';
+        // Neither meets AA, pick the higher contrast
+        return whiteContrast > darkContrast ? '#FFFFFF' : '#1E293B';
+    }
+
+    // ─── Seeded PRNG (for deterministic K-Means++) ───────────
+    /**
+     * Simple Mulberry32 PRNG. Returns a function that yields [0, 1) on each call.
+     */
+    static createSeededRng(seed: number): () => number {
+        let state = seed | 0;
+        return () => {
+            state = (state + 0x6D2B79F5) | 0;
+            let t = Math.imul(state ^ (state >>> 15), 1 | state);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    // ─── Oklab Distance (for clustering) ─────────────────────
+
+    /**
+     * Squared Euclidean distance between two Oklab colors.
+     */
+    static oklabDistanceSq(
+        a: [number, number, number],
+        b: [number, number, number]
+    ): number {
+        const dL = a[0] - b[0];
+        const da = a[1] - b[1];
+        const db = a[2] - b[2];
+        return dL * dL + da * da + db * db;
     }
 }

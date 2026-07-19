@@ -1,10 +1,18 @@
+// ─── Color Primitives ────────────────────────────────────────
+
 export interface Color {
     hex: string;
     rgb: [number, number, number];
     hsl: [number, number, number];
 }
 
+// ─── Theme Style & Harmony ───────────────────────────────────
+
 export type ThemeStyle = 'Professional' | 'Academic' | 'Modern' | 'Corporate' | 'Minimal';
+
+export type ColorHarmony = 'Complementary' | 'Analogous' | 'Triadic' | 'Split-Complementary';
+
+// ─── Color Scales ────────────────────────────────────────────
 
 export interface ColorScale {
     50: string;
@@ -17,7 +25,10 @@ export interface ColorScale {
     700: string;
     800: string;
     900: string;
+    950: string;
 }
+
+// ─── Theme Colors ────────────────────────────────────────────
 
 export interface ThemeColors {
     primary: string;
@@ -27,23 +38,25 @@ export interface ThemeColors {
     accent: string;
     accentScale: ColorScale;
     neutralScale: ColorScale;
-    
+
     // Background and surfaces
     background: string;
     surface: string;
     surfaceAlt: string;
-    
+
     // Text colors
     text: string;
     textMuted: string;
     textInverted: string;
-    
-    // Semantic colors
+
+    // Semantic colors (theme-harmonized)
     success: string;
     warning: string;
     danger: string;
     info: string;
 }
+
+// ─── Typography ──────────────────────────────────────────────
 
 export interface ThemeTypography {
     fontFamily: string;
@@ -58,8 +71,10 @@ export interface ThemeTypography {
         h6: string;
         p: string;
         small: string;
-    }
+    };
 }
+
+// ─── Styles (Spacing, Radius, Shadows) ───────────────────────
 
 export interface ThemeStyles {
     borderRadius: {
@@ -91,10 +106,14 @@ export interface ThemeStyles {
     };
 }
 
+// ─── Complete Theme ──────────────────────────────────────────
+
 export interface Theme {
     id: string;
     name: string;
     style: ThemeStyle;
+    colorHarmony: ColorHarmony;
+    isDarkMode: boolean;
     colors: ThemeColors;
     typography: ThemeTypography;
     styles: ThemeStyles;

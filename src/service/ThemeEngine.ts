@@ -1,4 +1,4 @@
-import type { Theme, ThemeStyle } from '../model/Theme';
+import type { Theme, ThemeStyle, ColorHarmony } from '../model/Theme';
 import { ColorExtractor } from '../extractor/ColorExtractor';
 import { ThemeGenerator } from '../generator/ThemeGenerator';
 import { ThemeApplier } from '../theme/ThemeApplier';
@@ -19,14 +19,15 @@ export class ThemeEngine {
 
     /**
      * Generates a complete design system theme based on an organization's logo and preferred style.
-     * 
-     * @param imageSrc Data URL or URL of the uploaded logo image
-     * @param orgName Name of the organization
-     * @param style Preferred theme style
-     * @param overrides Optional color overrides
-     * @returns A generated Theme object
      */
-    public async generateTheme(imageSrc: string, orgName: string, style: ThemeStyle = 'Modern', overrides?: ThemeOverrides): Promise<Theme> {
+    public async generateTheme(
+        imageSrc: string,
+        orgName: string,
+        style: ThemeStyle = 'Modern',
+        harmony: ColorHarmony = 'Complementary',
+        isDarkMode: boolean = false,
+        overrides?: ThemeOverrides
+    ): Promise<Theme> {
         // 1. Extract base colors from the logo
         let { primary, secondary, neutral } = await this.extractor.extractColors(imageSrc);
 
@@ -43,7 +44,9 @@ export class ThemeEngine {
             style,
             primary,
             secondary,
-            neutral
+            neutral,
+            harmony,
+            isDarkMode
         );
 
         return theme;
@@ -51,7 +54,6 @@ export class ThemeEngine {
 
     /**
      * Instantly applies a generated Theme to the current document using CSS variables.
-     * @param theme The Theme object to apply
      */
     public applyTheme(theme: Theme): void {
         ThemeApplier.apply(theme);

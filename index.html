@@ -3,25 +3,33 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Adaptive Theme Engine Demo</title>
+    <meta name="description" content="An enterprise-grade, browser-based design system generator that uses artificial intelligence and perceptual color math." />
+    <title>Adaptive Theme Engine</title>
+    <!-- Favicon (placeholder path, should be present in public/ or src/assets/) -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    
+    <!-- Load fonts (ideally lazy loaded based on theme, but for demo loading common ones) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&family=Playfair+Display:wght@400;700&family=Lora:wght@400;500&family=Outfit:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Main styles -->
     <link rel="stylesheet" href="/src/styles/base.css" />
 </head>
 <body>
     <div class="layout">
         <!-- Sidebar Controls -->
-        <aside class="sidebar-controls">
+        <aside class="sidebar-controls" aria-label="Theme Controls">
             <div>
-                <h2 style="margin-bottom: 0.5rem;">Theme Engine</h2>
+                <h2 style="margin-bottom: var(--spacing-2);">Theme Engine</h2>
                 <p>Upload a logo to automatically generate a complete design system.</p>
             </div>
 
+            <!-- Upload Area -->
             <div class="form-group">
-                <label class="form-label">Upload Logo</label>
-                <div class="upload-area" id="drop-zone">
+                <label class="form-label">Brand Logo</label>
+                <div class="upload-area" id="drop-zone" aria-label="Upload logo">
                     <p id="upload-text">Drag & drop logo here, or click to browse</p>
-                    <input type="file" id="logo-input" accept="image/png, image/jpeg, image/svg+xml" style="display: none;" />
-                    <img id="logo-preview" style="max-width: 100%; max-height: 120px; display: none; margin: 0 auto;" />
+                    <input type="file" id="logo-input" accept="image/png, image/jpeg, image/svg+xml" style="display: none;" aria-hidden="true" />
+                    <img id="logo-preview" alt="Uploaded logo preview" style="max-width: 100%; max-height: 120px; display: none; margin: 0 auto;" />
                 </div>
             </div>
 
@@ -31,7 +39,7 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="theme-style">Theme Style</label>
+                <label class="form-label" for="theme-style">Typography & Geometry</label>
                 <select id="theme-style" class="form-control">
                     <option value="Modern">Modern</option>
                     <option value="Professional">Professional</option>
@@ -40,23 +48,49 @@
                     <option value="Minimal">Minimal</option>
                 </select>
             </div>
-            
-            <button class="btn btn-primary" id="generate-btn" style="width: 100%;" disabled>Generate Theme</button>
+
+            <div class="form-group">
+                <label class="form-label" for="color-harmony">Color Harmony Mode</label>
+                <select id="color-harmony" class="form-control">
+                    <option value="Complementary">Complementary (180°)</option>
+                    <option value="Analogous">Analogous (30°)</option>
+                    <option value="Triadic">Triadic (120°)</option>
+                    <option value="Split-Complementary">Split-Complementary (150°)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: var(--spacing-2);">
+                <label class="form-label" for="dark-mode-toggle" style="margin: 0;">Dark Mode Preview</label>
+                <label class="switch">
+                  <input type="checkbox" id="dark-mode-toggle">
+                  <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- Generate Button -->
+            <div style="margin-top: var(--spacing-4);">
+                <button class="btn btn-primary" id="generate-btn" style="width: 100%;" disabled>Generate Theme</button>
+                <div id="loading-progress" style="display: none;">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Theme Tweaks -->
-            <div id="theme-tweaks" style="display: none; margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-neutral-200);">
-                <p style="font-weight: 600; font-size: var(--font-size-small); margin-bottom: var(--spacing-3);">Theme Tweaks</p>
-                <div style="display: flex; gap: var(--spacing-3);">
+            <div id="theme-tweaks" style="display: none; margin-top: var(--spacing-4); padding-top: var(--spacing-4); border-top: 1px solid var(--color-neutral-200);">
+                <p style="font-weight: 600; font-size: var(--font-size-small); margin-bottom: var(--spacing-3);">Manual Adjustments</p>
+                <div style="display: flex; gap: var(--spacing-3); justify-content: space-between;">
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                        <input type="color" id="tweak-primary" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <input type="color" id="tweak-primary" aria-label="Tweak primary color" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
                         <span style="font-size: 10px; color: var(--color-text-muted);">Primary</span>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                        <input type="color" id="tweak-secondary" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
-                        <span style="font-size: 10px; color: var(--color-text-muted);">Accent</span>
+                        <input type="color" id="tweak-secondary" aria-label="Tweak secondary color" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <span style="font-size: 10px; color: var(--color-text-muted);">Secondary</span>
                     </div>
                     <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                        <input type="color" id="tweak-neutral" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <input type="color" id="tweak-neutral" aria-label="Tweak neutral color" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
                         <span style="font-size: 10px; color: var(--color-text-muted);">Neutral</span>
                     </div>
                 </div>
@@ -64,32 +98,82 @@
         </aside>
 
         <!-- Preview Area -->
-        <main class="preview-area">
+        <main class="preview-area" aria-label="Theme Preview">
             <nav class="navbar">
                 <div class="nav-brand" style="display: flex; align-items: center; gap: 0.75rem;">
-                    <img id="preview-logo" style="display: none; max-height: 36px; object-fit: contain;" />
+                    <img id="preview-logo" alt="Brand Logo" style="display: none; max-height: 36px; object-fit: contain;" />
                     <span id="preview-brand">Acme Corp</span>
                 </div>
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <button class="btn btn-primary" style="margin-left: 1rem;" id="export-btn" disabled>Export Config</button>
+                    <button class="btn btn-primary" id="export-btn" disabled>Export Theme</button>
                 </div>
             </nav>
 
-            <div style="padding: var(--spacing-8); max-width: 1000px; margin: 0 auto; width: 100%;">
+            <div style="padding: var(--spacing-8); max-width: 1200px; margin: 0 auto; width: 100%;">
                 
-                <div class="alert alert-info" style="margin-bottom: var(--spacing-6);">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <div class="alert alert-info">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     <div>
                         <strong style="display: block;">Welcome to the Preview!</strong>
-                        <span>This area instantly updates when you generate a new theme. Try changing styles!</span>
+                        <span>This area instantly updates when you generate a new theme. Try changing styles or toggling Dark Mode!</span>
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-6);">
+                <!-- Palette Strip (Generated Colors) -->
+                <div class="card" style="margin-bottom: var(--spacing-8);">
+                    <h3 style="margin-bottom: var(--spacing-4);">Generated Palette (50-950)</h3>
+                    
+                    <p style="font-size: var(--font-size-small); font-weight: 600; margin-bottom: var(--spacing-2);">Primary</p>
+                    <div class="palette-strip" style="margin-bottom: var(--spacing-4);">
+                        <div class="palette-swatch" style="background: var(--color-primary-50); color: var(--color-primary-900);">50</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-100); color: var(--color-primary-900);">100</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-200); color: var(--color-primary-900);">200</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-300); color: var(--color-primary-900);">300</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-400); color: var(--color-primary-900);">400</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-500); color: #fff;">500</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-600); color: #fff;">600</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-700); color: #fff;">700</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-800); color: #fff;">800</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-900); color: #fff;">900</div>
+                        <div class="palette-swatch" style="background: var(--color-primary-950); color: #fff;">950</div>
+                    </div>
+
+                    <p style="font-size: var(--font-size-small); font-weight: 600; margin-bottom: var(--spacing-2);">Accent (Harmonized)</p>
+                    <div class="palette-strip" style="margin-bottom: var(--spacing-4);">
+                        <div class="palette-swatch" style="background: var(--color-accent-50); color: var(--color-accent-900);">50</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-100); color: var(--color-accent-900);">100</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-200); color: var(--color-accent-900);">200</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-300); color: var(--color-accent-900);">300</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-400); color: var(--color-accent-900);">400</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-500); color: #fff;">500</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-600); color: #fff;">600</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-700); color: #fff;">700</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-800); color: #fff;">800</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-900); color: #fff;">900</div>
+                        <div class="palette-swatch" style="background: var(--color-accent-950); color: #fff;">950</div>
+                    </div>
+
+                    <p style="font-size: var(--font-size-small); font-weight: 600; margin-bottom: var(--spacing-2);">Branded Neutral</p>
+                    <div class="palette-strip">
+                        <div class="palette-swatch" style="background: var(--color-neutral-50); color: var(--color-neutral-900);">50</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-100); color: var(--color-neutral-900);">100</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-200); color: var(--color-neutral-900);">200</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-300); color: var(--color-neutral-900);">300</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-400); color: var(--color-neutral-900);">400</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-500); color: #fff;">500</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-600); color: #fff;">600</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-700); color: #fff;">700</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-800); color: #fff;">800</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-900); color: #fff;">900</div>
+                        <div class="palette-swatch" style="background: var(--color-neutral-950); color: #fff;">950</div>
+                    </div>
+                </div>
+
+                <div class="grid-container" style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-6);">
                     <!-- Main Content Col -->
                     <div>
                         <div class="card">
-                            <h3>Project Overview</h3>
+                            <h3>Dashboard Overview</h3>
                             <p>Here is a summary of your recent activities and overall system status.</p>
                             
                             <div class="table-wrapper" style="margin-top: var(--spacing-4);">
@@ -126,16 +210,16 @@
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: var(--spacing-4);">
-                            <div class="card" style="flex: 1; text-align: center;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--spacing-4);">
+                            <div class="card" style="text-align: center; margin-bottom: 0;">
                                 <h2 style="color: var(--color-primary); margin-bottom: 0;">1,240</h2>
                                 <p>Total Users</p>
                             </div>
-                            <div class="card" style="flex: 1; text-align: center;">
-                                <h2 style="color: var(--color-secondary); margin-bottom: 0;">84%</h2>
+                            <div class="card" style="text-align: center; margin-bottom: 0;">
+                                <h2 style="color: var(--color-accent); margin-bottom: 0;">84%</h2>
                                 <p>Engagement</p>
                             </div>
-                            <div class="card" style="flex: 1; text-align: center;">
+                            <div class="card" style="text-align: center; margin-bottom: 0;">
                                 <h2 style="color: var(--color-success); margin-bottom: 0;">$45k</h2>
                                 <p>Revenue</p>
                             </div>
@@ -145,21 +229,21 @@
                     <!-- Side Col -->
                     <div>
                         <div class="card">
-                            <h3>Quick Actions</h3>
+                            <h3>Component Gallery</h3>
                             <div style="display: flex; flex-direction: column; gap: var(--spacing-3);">
-                                <button class="btn btn-primary">Create New Item</button>
-                                <button class="btn btn-secondary">Generate Report</button>
-                                <button class="btn btn-outline">System Settings</button>
+                                <button class="btn btn-primary">Primary Action</button>
+                                <button class="btn btn-secondary">Secondary Action</button>
+                                <button class="btn btn-outline">Outline Button</button>
                             </div>
                         </div>
 
                         <div class="card">
-                            <h3>Account Settings</h3>
+                            <h3>Form Inputs</h3>
                             <div class="form-group">
                                 <label class="form-label">Email Address</label>
                                 <input type="email" class="form-control" value="user@acmecorp.com" />
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-bottom: var(--spacing-4);">
                                 <label class="form-label">Password</label>
                                 <input type="password" class="form-control" value="password123" />
                             </div>
@@ -173,22 +257,47 @@
     </div>
 
     <!-- Export Modal -->
-    <div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-        <div class="card" style="width: 800px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+    <div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="card" style="width: 900px; max-width: 95vw; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-4);">
                 <h2>Export Theme Configuration</h2>
-                <button id="close-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+                <button id="close-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--color-text);">&times;</button>
             </div>
-            <p style="color: var(--color-text-muted); margin-bottom: var(--spacing-4);">Copy the generated code below to use this exact theme in your own projects.</p>
             
-            <h3 style="margin-top: var(--spacing-4); margin-bottom: var(--spacing-2);">Raw CSS Variables</h3>
-            <pre style="background: var(--color-neutral-900); color: white; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto;"><code id="css-export"></code></pre>
+            <p style="color: var(--color-text-muted); margin-bottom: var(--spacing-4);">Copy the generated code to integrate this design system into your project.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-6);">
+                <!-- CSS Column -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-2);">
+                        <h3 style="margin: 0; font-size: var(--font-size-p);">Raw CSS Variables</h3>
+                        <button id="btn-copy-css" class="btn btn-outline" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Copy CSS</button>
+                    </div>
+                    <pre style="background: #0F172A; color: #E2E8F0; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto; font-size: 0.85rem; max-height: 400px;"><code id="css-export"></code></pre>
+                </div>
 
-            <h3 style="margin-top: var(--spacing-4); margin-bottom: var(--spacing-2);">Tailwind Config</h3>
-            <pre style="background: var(--color-neutral-900); color: white; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto;"><code id="tailwind-export"></code></pre>
+                <!-- Tailwind Column -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-2);">
+                        <h3 style="margin: 0; font-size: var(--font-size-p);">Tailwind config</h3>
+                        <button id="btn-copy-tw" class="btn btn-outline" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Copy Config</button>
+                    </div>
+                    <pre style="background: #0F172A; color: #E2E8F0; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto; font-size: 0.85rem; max-height: 400px;"><code id="tailwind-export"></code></pre>
+                </div>
+            </div>
+
+            <!-- JSON Export (collapsed by default, but content available) -->
+            <div style="margin-top: var(--spacing-6);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-2);">
+                    <h3 style="margin: 0; font-size: var(--font-size-p);">Raw JSON (Theme Object)</h3>
+                    <button id="btn-copy-json" class="btn btn-outline" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">Copy JSON</button>
+                </div>
+                <pre style="background: #0F172A; color: #E2E8F0; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto; font-size: 0.85rem; max-height: 200px;"><code id="json-export"></code></pre>
+            </div>
         </div>
     </div>
 
+    <!-- App Entry -->
     <script type="module" src="/src/controller/AppController.ts"></script>
 </body>
 </html>
