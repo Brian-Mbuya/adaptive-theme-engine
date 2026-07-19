@@ -25,4 +25,4 @@ An enterprise-grade, browser-based design system generator that uses artificial 
 
 ## Architecture
 
-This is a pure TypeScript Vanilla architecture focused on zero-latency processing. It avoids server-side processing for images, relying exclusively on Canvas APIs and local WebAssembly models to guarantee privacy and speed.
+This is a pure TypeScript Vanilla architecture focused on zero-latency processing. It avoids server-side processing for images, relying exclusively on Canvas APIs and local WebAssembly models to guarantee privacy and speed
