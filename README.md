@@ -25,4 +25,17 @@ An enterprise-grade, browser-based design system generator that uses artificial 
 
 ## Architecture
 
-This is a pure TypeScript Vanilla architecture focused on zero-latency processing. It avoids server-side processing for images, relying exclusively on Canvas APIs and local WebAssembly models to guarantee privacy and speed
+This is a pure TypeScript Vanilla architecture focused on zero-latency processing. It avoids server-side processing for images, relying exclusively on Canvas APIs and local WebAssembly models to guarantee privacy and speed.
+
+## Gallery
+
+Here are some examples of generated themes using different university logos and harmony modes:
+
+### University of Nairobi (Analogous Harmony)
+![University of Nairobi Theme](screenshots/uon-theme.png)
+
+### Kenyatta University (Complementary Harmony)
+![Kenyatta University Theme](screenshots/kenyatta-theme.png)
+
+### Chuka University (Complementary Harmony - Dark Mode)
+![Chuka University Theme](screenshots/chuka-theme.png)

@@ -377,11 +377,11 @@ td {
     padding-bottom: 4px;
     font-size: 10px;
     font-family: monospace;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+    color: transparent !important;
+    transition: color 0.2s ease;
 }
 .palette-swatch:hover {
-    opacity: 1;
+    color: inherit !important;
 }
 
 /* Toggle Switch */
