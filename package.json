@@ -13,7 +13,6 @@
     "vite": "^8.1.1"
   },
   "dependencies": {
-    "color-thief-browser": "^2.0.2",
     "tesseract.js": "^7.0.0"
   }
 }
