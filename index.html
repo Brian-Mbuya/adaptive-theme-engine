@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adaptive Theme Engine Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&family=Playfair+Display:wght@400;700&family=Lora:wght@400;500&family=Outfit:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles/base.css" />
+</head>
+<body>
+    <div class="layout">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar-controls">
+            <div>
+                <h2 style="margin-bottom: 0.5rem;">Theme Engine</h2>
+                <p>Upload a logo to automatically generate a complete design system.</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Upload Logo</label>
+                <div class="upload-area" id="drop-zone">
+                    <p id="upload-text">Drag & drop logo here, or click to browse</p>
+                    <input type="file" id="logo-input" accept="image/png, image/jpeg, image/svg+xml" style="display: none;" />
+                    <img id="logo-preview" style="max-width: 100%; max-height: 120px; display: none; margin: 0 auto;" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="org-name">Organization Name</label>
+                <input type="text" id="org-name" class="form-control" placeholder="e.g. Acme Corp" value="Acme Corp" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="theme-style">Theme Style</label>
+                <select id="theme-style" class="form-control">
+                    <option value="Modern">Modern</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Corporate">Corporate</option>
+                    <option value="Minimal">Minimal</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" id="generate-btn" style="width: 100%;" disabled>Generate Theme</button>
+
+            <!-- Theme Tweaks -->
+            <div id="theme-tweaks" style="display: none; margin-top: var(--spacing-6); padding-top: var(--spacing-4); border-top: 1px solid var(--color-neutral-200);">
+                <p style="font-weight: 600; font-size: var(--font-size-small); margin-bottom: var(--spacing-3);">Theme Tweaks</p>
+                <div style="display: flex; gap: var(--spacing-3);">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <input type="color" id="tweak-primary" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <span style="font-size: 10px; color: var(--color-text-muted);">Primary</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <input type="color" id="tweak-secondary" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <span style="font-size: 10px; color: var(--color-text-muted);">Accent</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <input type="color" id="tweak-neutral" style="width: 32px; height: 32px; border: none; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <span style="font-size: 10px; color: var(--color-text-muted);">Neutral</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Preview Area -->
+        <main class="preview-area">
+            <nav class="navbar">
+                <div class="nav-brand" style="display: flex; align-items: center; gap: 0.75rem;">
+                    <img id="preview-logo" style="display: none; max-height: 36px; object-fit: contain;" />
+                    <span id="preview-brand">Acme Corp</span>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button class="btn btn-primary" style="margin-left: 1rem;" id="export-btn" disabled>Export Config</button>
+                </div>
+            </nav>
+
+            <div style="padding: var(--spacing-8); max-width: 1000px; margin: 0 auto; width: 100%;">
+                
+                <div class="alert alert-info" style="margin-bottom: var(--spacing-6);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <div>
+                        <strong style="display: block;">Welcome to the Preview!</strong>
+                        <span>This area instantly updates when you generate a new theme. Try changing styles!</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--spacing-6);">
+                    <!-- Main Content Col -->
+                    <div>
+                        <div class="card">
+                            <h3>Project Overview</h3>
+                            <p>Here is a summary of your recent activities and overall system status.</p>
+                            
+                            <div class="table-wrapper" style="margin-top: var(--spacing-4);">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Project Name</th>
+                                            <th>Status</th>
+                                            <th>Progress</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Website Redesign</td>
+                                            <td><span class="badge badge-success">Active</span></td>
+                                            <td>85%</td>
+                                            <td><button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Mobile App Launch</td>
+                                            <td><span class="badge badge-warning">Pending</span></td>
+                                            <td>30%</td>
+                                            <td><button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">View</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Database Migration</td>
+                                            <td><span class="badge badge-danger">Failed</span></td>
+                                            <td>0%</td>
+                                            <td><button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Retry</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: var(--spacing-4);">
+                            <div class="card" style="flex: 1; text-align: center;">
+                                <h2 style="color: var(--color-primary); margin-bottom: 0;">1,240</h2>
+                                <p>Total Users</p>
+                            </div>
+                            <div class="card" style="flex: 1; text-align: center;">
+                                <h2 style="color: var(--color-secondary); margin-bottom: 0;">84%</h2>
+                                <p>Engagement</p>
+                            </div>
+                            <div class="card" style="flex: 1; text-align: center;">
+                                <h2 style="color: var(--color-success); margin-bottom: 0;">$45k</h2>
+                                <p>Revenue</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Side Col -->
+                    <div>
+                        <div class="card">
+                            <h3>Quick Actions</h3>
+                            <div style="display: flex; flex-direction: column; gap: var(--spacing-3);">
+                                <button class="btn btn-primary">Create New Item</button>
+                                <button class="btn btn-secondary">Generate Report</button>
+                                <button class="btn btn-outline">System Settings</button>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <h3>Account Settings</h3>
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" value="user@acmecorp.com" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" value="password123" />
+                            </div>
+                            <button class="btn btn-primary" style="width: 100%;">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="card" style="width: 800px; max-width: 90vw; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-4);">
+                <h2>Export Theme Configuration</h2>
+                <button id="close-modal" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+            <p style="color: var(--color-text-muted); margin-bottom: var(--spacing-4);">Copy the generated code below to use this exact theme in your own projects.</p>
+            
+            <h3 style="margin-top: var(--spacing-4); margin-bottom: var(--spacing-2);">Raw CSS Variables</h3>
+            <pre style="background: var(--color-neutral-900); color: white; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto;"><code id="css-export"></code></pre>
+
+            <h3 style="margin-top: var(--spacing-4); margin-bottom: var(--spacing-2);">Tailwind Config</h3>
+            <pre style="background: var(--color-neutral-900); color: white; padding: var(--spacing-4); border-radius: var(--border-radius-base); overflow-x: auto;"><code id="tailwind-export"></code></pre>
+        </div>
+    </div>
+
+    <script type="module" src="/src/controller/AppController.ts"></script>
+</body>
+</html>
