@@ -25,45 +25,55 @@ export class ColorExtractor {
         // Convert pixels to Oklab for perceptually meaningful clustering
         const oklabPixels = pixels.map(([r, g, b]) => ColorUtils.rgbToOklab(r, g, b));
 
-        // K-Means++ with deterministic seed
+        // 1. K-Means++ with deterministic seed
         const K = Math.min(6, oklabPixels.length);
-        const { centroids, assignments } = this.kMeansPlusPlus(oklabPixels, K);
+        const { centroids: rawCentroids, assignments: rawAssignments } = this.kMeansPlusPlus(oklabPixels, K);
 
-        // Count cluster membership
-        const clusterCounts = new Array(K).fill(0);
-        for (const a of assignments) {
-            clusterCounts[a]++;
+        // Count initial cluster membership
+        const rawCounts = new Array(K).fill(0);
+        for (const a of rawAssignments) {
+            rawCounts[a]++;
         }
 
-        // Convert centroids back to RGB and sort by frequency
-        const clusters = centroids
-            .map((oklab, i) => ({
-                oklab,
-                rgb: ColorUtils.oklabToRgb(oklab[0], oklab[1], oklab[2]) as [number, number, number],
-                count: clusterCounts[i],
-            }))
-            .filter(c => c.count > 0)
-            .sort((a, b) => b.count - a.count);
+        // 2. Perceptual Dedup: Merge clusters with Oklab ΔE < 0.02 (distSq < 0.0004)
+        const clusters: { oklab: [number, number, number]; rgb: [number, number, number]; count: number; score: number }[] = [];
+        for (let i = 0; i < K; i++) {
+            if (rawCounts[i] === 0) continue;
+            const oklab = rawCentroids[i];
+            const rgb = ColorUtils.oklabToRgb(oklab[0], oklab[1], oklab[2]) as [number, number, number];
+            let merged = false;
+
+            for (const existing of clusters) {
+                if (ColorUtils.oklabDistanceSq(existing.oklab, oklab) < 0.0004) {
+                    existing.count += rawCounts[i];
+                    merged = true;
+                    break;
+                }
+            }
+
+            if (!merged) {
+                const [, chroma] = ColorUtils.rgbToOklch(rgb[0], rgb[1], rgb[2]);
+                // Chroma-weighted role scoring: score = chroma * ln(1 + pixelCount)
+                const score = chroma * Math.log(1 + rawCounts[i]);
+                clusters.push({ oklab, rgb, count: rawCounts[i], score });
+            }
+        }
 
         if (clusters.length === 0) return this.getDefaultColors();
 
+        // Sort by Chroma-Weighted Score descending (vivid brand marks beat large dull fields)
+        clusters.sort((a, b) => b.score - a.score);
+
         // --- Assign roles ---
 
-        // Primary: most dominant chromatic color (not lowest-saturation)
+        // Primary: highest chroma-weighted score cluster
         let primaryCluster = clusters[0];
-        for (const c of clusters) {
-            const hsl = ColorUtils.rgbToHsl(c.rgb[0], c.rgb[1], c.rgb[2]);
-            if (hsl[1] > 15) {
-                primaryCluster = c;
-                break;
-            }
-        }
         const primary = ColorUtils.createColor(primaryCluster.rgb);
 
-        // Secondary: next most frequent with sufficient contrast from primary
+        // Secondary: next highest score cluster with sufficient contrast from primary
         let secondaryRgb = primaryCluster.rgb;
-        for (const c of clusters) {
-            if (c === primaryCluster) continue;
+        for (let i = 1; i < clusters.length; i++) {
+            const c = clusters[i];
             const contrast = ColorUtils.getContrastRatio(primaryCluster.rgb, c.rgb);
             if (contrast > 1.5) {
                 secondaryRgb = c.rgb;
@@ -82,6 +92,7 @@ export class ColorExtractor {
                 neutralRgb = c.rgb;
             }
         }
+
         // If everything is saturated, synthesize a neutral from primary's hue
         if (minSat > 25) {
             const primaryHsl = ColorUtils.rgbToHsl(primaryCluster.rgb[0], primaryCluster.rgb[1], primaryCluster.rgb[2]);
@@ -128,9 +139,37 @@ export class ColorExtractor {
 
         canvas.width = width;
         canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-
         const imageData = ctx.getImageData(0, 0, width, height).data;
+
+        // Sample 4 corners for background voting
+        const cornerCoords = [
+            [0, 0],
+            [width - 1, 0],
+            [0, height - 1],
+            [width - 1, height - 1]
+        ];
+
+        const cornerOklabs: [number, number, number][] = [];
+        for (const [cx, cy] of cornerCoords) {
+            const idx = (cy * width + cx) * 4;
+            const ca = imageData[idx + 3];
+            if (ca >= 128) {
+                const cr = imageData[idx];
+                const cg = imageData[idx + 1];
+                const cb = imageData[idx + 2];
+                cornerOklabs.push(ColorUtils.rgbToOklab(cr, cg, cb));
+            }
+        }
+
+        // Average corner Oklab (background field color)
+        let bgOklab: [number, number, number] | null = null;
+        if (cornerOklabs.length >= 2) {
+            const sumL = cornerOklabs.reduce((acc, cur) => acc + cur[0], 0);
+            const suma = cornerOklabs.reduce((acc, cur) => acc + cur[1], 0);
+            const sumb = cornerOklabs.reduce((acc, cur) => acc + cur[2], 0);
+            bgOklab = [sumL / cornerOklabs.length, suma / cornerOklabs.length, sumb / cornerOklabs.length];
+        }
+
         const pixels: [number, number, number][] = [];
 
         for (let i = 0; i < imageData.length; i += 4) {
@@ -145,6 +184,14 @@ export class ColorExtractor {
             if (r > 245 && g > 245 && b > 245) continue;
             // Skip near-black
             if (r < 10 && g < 10 && b < 10) continue;
+
+            // Corner-vote background exclusion (skip pixels matching background color field)
+            if (bgOklab) {
+                const pixOklab = ColorUtils.rgbToOklab(r, g, b);
+                if (ColorUtils.oklabDistanceSq(pixOklab, bgOklab) < 0.0025) {
+                    continue;
+                }
+            }
 
             pixels.push([r, g, b]);
         }

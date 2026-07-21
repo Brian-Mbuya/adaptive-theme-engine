@@ -38,32 +38,97 @@ export class ColorGenerator {
         const oklch = ColorUtils.rgbToOklch(baseColor.rgb[0], baseColor.rgb[1], baseColor.rgb[2]);
         const baseChroma = oklch[1];
         const baseHue = oklch[2];
+        const baseL = Math.max(0.12, Math.min(0.98, oklab[0]));
+
+        // Find closest lightness step in LIGHT_STEPS to baseL
+        let closestIndex = 5; // Default 500
+        let minDiff = Infinity;
+        for (let i = 0; i < this.LIGHT_STEPS.length; i++) {
+            const diff = Math.abs(this.LIGHT_STEPS[i].L - baseL);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestIndex = i;
+            }
+        }
+
+        // Interpolate lightness values maintaining strict monotonicity L[i] > L[i+1]
+        const targetL = new Array<number>(this.LIGHT_STEPS.length);
+        targetL[closestIndex] = baseL;
+        const maxL = 0.97;
+        const minL = 0.16;
+
+        for (let i = closestIndex - 1; i >= 0; i--) {
+            const rangeFrac = (closestIndex - i) / (closestIndex + 1);
+            targetL[i] = baseL + (maxL - baseL) * rangeFrac;
+        }
+
+        for (let i = closestIndex + 1; i < this.LIGHT_STEPS.length; i++) {
+            const rangeFrac = (i - closestIndex) / (this.LIGHT_STEPS.length - 1 - closestIndex);
+            targetL[i] = baseL - (baseL - minL) * rangeFrac;
+        }
 
         const scale: Record<number, string> = {};
 
-        for (const step of this.LIGHT_STEPS) {
-            // Use the actual color's lightness for the 500 stop (clamped)
-            const L = step.level === 500
-                ? Math.max(0.25, Math.min(0.75, oklab[0]))
-                : step.L;
+        for (let i = 0; i < this.LIGHT_STEPS.length; i++) {
+            const step = this.LIGHT_STEPS[i];
+            const level = step.level;
 
-            // Reduce chroma at extremes for natural palette feel
+            if (i === closestIndex) {
+                scale[level] = baseColor.hex;
+                continue;
+            }
+
+            const L = targetL[i];
             let chromaMultiplier = 1.0;
-            if (step.level <= 100) chromaMultiplier = 0.45;
-            else if (step.level <= 200) chromaMultiplier = 0.65;
-            else if (step.level >= 900) chromaMultiplier = 0.7;
-            else if (step.level >= 800) chromaMultiplier = 0.8;
+            if (level <= 100) chromaMultiplier = 0.45;
+            else if (level <= 200) chromaMultiplier = 0.65;
+            else if (level >= 900) chromaMultiplier = 0.7;
+            else if (level >= 800) chromaMultiplier = 0.8;
 
             const C = baseChroma * chromaMultiplier;
-
-            // Gamut-safe conversion
-            scale[step.level] = ColorUtils.safeOklchToHex(L, C, baseHue);
+            scale[level] = ColorUtils.safeOklchToHex(L, C, baseHue);
         }
 
-        // Override 500 with the exact base hex for precision
-        scale[500] = baseColor.hex;
-
         return scale as unknown as ColorScale;
+    }
+
+    /**
+     * Binary search OKLCH lightness to guarantee minimum WCAG contrast against surface.
+     */
+    public static enforceContrast(
+        textHex: string,
+        bgHex: string,
+        minContrast: number = 4.5
+    ): string {
+        const bgRgb = ColorUtils.hexToRgb(bgHex);
+        let textRgb = ColorUtils.hexToRgb(textHex);
+        let currentRatio = ColorUtils.getContrastRatio(textRgb, bgRgb);
+
+        if (currentRatio >= minContrast) return textHex;
+
+        const [L, C, H] = ColorUtils.rgbToOklch(textRgb[0], textRgb[1], textRgb[2]);
+        const bgL = ColorUtils.rgbToOklab(bgRgb[0], bgRgb[1], bgRgb[2])[0];
+        const adjustLighter = bgL < 0.5;
+
+        let lo = L;
+        let hi = adjustLighter ? 0.98 : 0.16;
+        let bestHex = textHex;
+
+        for (let i = 0; i < 15; i++) {
+            const mid = (lo + hi) / 2;
+            const candidateHex = ColorUtils.safeOklchToHex(mid, C, H);
+            const candidateRgb = ColorUtils.hexToRgb(candidateHex);
+            const ratio = ColorUtils.getContrastRatio(candidateRgb, bgRgb);
+
+            if (ratio >= minContrast) {
+                bestHex = candidateHex;
+                if (adjustLighter) hi = mid; else lo = mid;
+            } else {
+                if (adjustLighter) lo = mid; else hi = mid;
+            }
+        }
+
+        return bestHex;
     }
 
     // ─── Full Palette Generation ─────────────────────────────
@@ -78,15 +143,12 @@ export class ColorGenerator {
         const primaryScale = this.generateScale(primary);
         const secondaryScale = this.generateScale(secondary);
 
-        // Generate a TRUE accent from the primary using color harmony
         const accentRgb = ColorUtils.getHarmonyColors(primary.rgb, harmony)[0];
         const accent = ColorUtils.createColor(accentRgb);
         const accentScale = this.generateScale(accent);
 
-        // Branded neutrals: inject primary's hue at very low chroma
         const primaryOklch = ColorUtils.rgbToOklch(primary.rgb[0], primary.rgb[1], primary.rgb[2]);
         const neutralOklab = ColorUtils.rgbToOklab(neutral.rgb[0], neutral.rgb[1], neutral.rgb[2]);
-        // Build neutral with primary's hue but very low chroma (8-12% of primary's chroma)
         const brandedNeutralChroma = Math.max(0.005, Math.min(0.02, primaryOklch[1] * 0.15));
         const brandedNeutralRgb = ColorUtils.oklchToRgb(
             neutralOklab[0],
@@ -96,11 +158,19 @@ export class ColorGenerator {
         const brandedNeutral = ColorUtils.createColor(brandedNeutralRgb);
         const neutralScale = this.generateScale(brandedNeutral);
 
-        // ─── Theme-aware semantic colors ─────────────────────
-        // Harmonize semantic colors with the neutral scale instead of hardcoding
         const semanticColors = this.generateSemanticColors(neutralScale, isDarkMode);
 
         if (isDarkMode) {
+            const bg = neutralScale[950];
+            const surface = neutralScale[900];
+            const surfaceAlt = neutralScale[800];
+
+            const rawText = neutralScale[50];
+            const rawMuted = neutralScale[400];
+
+            const text = this.enforceContrast(rawText, surface, 4.5);
+            const textMuted = this.enforceContrast(rawMuted, surface, 4.5);
+
             return {
                 primary: primary.hex,
                 primaryScale,
@@ -110,19 +180,27 @@ export class ColorGenerator {
                 accentScale,
                 neutralScale,
 
-                // Dark mode: inverted surfaces
-                background: neutralScale[950],
-                surface: neutralScale[900],
-                surfaceAlt: neutralScale[800],
+                background: bg,
+                surface,
+                surfaceAlt,
 
-                // Dark mode: light text
-                text: neutralScale[50],
-                textMuted: neutralScale[400],
-                textInverted: neutralScale[900],
+                text,
+                textMuted,
+                textInverted: surface,
 
                 ...semanticColors,
             };
         }
+
+        const bg = neutralScale[50];
+        const surface = '#FFFFFF';
+        const surfaceAlt = neutralScale[100];
+
+        const rawText = neutralScale[900];
+        const rawMuted = neutralScale[600];
+
+        const text = this.enforceContrast(rawText, surface, 4.5);
+        const textMuted = this.enforceContrast(rawMuted, surface, 4.5);
 
         return {
             primary: primary.hex,
@@ -133,14 +211,12 @@ export class ColorGenerator {
             accentScale,
             neutralScale,
 
-            // Light mode surfaces
-            background: neutralScale[50],
-            surface: '#FFFFFF',
-            surfaceAlt: neutralScale[100],
+            background: bg,
+            surface,
+            surfaceAlt,
 
-            // Light mode text
-            text: neutralScale[900],
-            textMuted: neutralScale[600],
+            text,
+            textMuted,
             textInverted: '#FFFFFF',
 
             ...semanticColors,
@@ -148,29 +224,27 @@ export class ColorGenerator {
     }
 
     // ─── Semantic Colors ─────────────────────────────────────
-    /**
-     * Generate theme-harmonized semantic colors.
-     * Rather than hardcoding, we use the neutral scale's hue
-     * as a slight tinting influence.
-     */
     private static generateSemanticColors(
-        _neutralScale: ColorScale,
+        neutralScale: ColorScale,
         isDarkMode: boolean,
     ): { success: string; warning: string; danger: string; info: string } {
-        // Base semantic hues in OKLCH
+        const neutral900Rgb = ColorUtils.hexToRgb(neutralScale[900]);
+        const neutralOklch = ColorUtils.rgbToOklch(neutral900Rgb[0], neutral900Rgb[1], neutral900Rgb[2]);
+        const brandHue = neutralOklch[2];
+
         const semanticDefs = [
-            { key: 'success', H: 145, C: 0.17 }, // Green
-            { key: 'warning', H: 75,  C: 0.17 }, // Amber
-            { key: 'danger',  H: 25,  C: 0.19 }, // Red
-            { key: 'info',    H: 250, C: 0.13 }, // Blue
+            { key: 'success', H: 145, C: 0.17 },
+            { key: 'warning', H: 75,  C: 0.17 },
+            { key: 'danger',  H: 25,  C: 0.19 },
+            { key: 'info',    H: 250, C: 0.13 },
         ] as const;
 
         const result: Record<string, string> = {};
 
         for (const def of semanticDefs) {
-            // Use lighter variants in dark mode for visibility
             const L = isDarkMode ? 0.72 : 0.55;
-            result[def.key] = ColorUtils.safeOklchToHex(L, def.C, def.H);
+            const blendedH = (def.H * 0.95 + brandHue * 0.05) % 360;
+            result[def.key] = ColorUtils.safeOklchToHex(L, def.C, blendedH);
         }
 
         return result as { success: string; warning: string; danger: string; info: string };

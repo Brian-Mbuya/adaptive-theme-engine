@@ -1,4 +1,4 @@
-import Tesseract from 'tesseract.js';
+import type TesseractType from 'tesseract.js';
 
 /**
  * Handles logo processing: OCR extraction of the organization name
@@ -11,6 +11,10 @@ export class LogoProcessor {
      */
     public static async processLogo(imageSrc: string): Promise<{ orgName: string | null; croppedImageSrc: string }> {
         try {
+            // Dynamic import to prevent Tesseract bundling in core engine library build
+            const tesseractModule = await import('tesseract.js');
+            const Tesseract = tesseractModule.default || tesseractModule;
+
             // 1. Perform OCR
             const result = await Tesseract.recognize(imageSrc, 'eng');
             const data: any = result.data;
@@ -85,6 +89,12 @@ export class LogoProcessor {
                     cropH = h - cropY;
                 } else {
                     // Text covers middle, can't safely crop
+                    resolve(imageSrc);
+                    return;
+                }
+
+                // Enforce minimum crop area (must be at least 25% of original width and height)
+                if (cropW < w * 0.25 || cropH < h * 0.25) {
                     resolve(imageSrc);
                     return;
                 }

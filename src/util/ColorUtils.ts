@@ -28,16 +28,20 @@ export class ColorUtils {
     // ─── HEX ←→ RGB ─────────────────────────────────────────
 
     static hexToRgb(hex: string): [number, number, number] {
-        const cleaned = hex.replace('#', '');
+        if (!hex || typeof hex !== 'string') return [0, 0, 0];
+        const cleaned = hex.trim().replace(/^#/, '');
+        if (!/^(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(cleaned)) {
+            return [0, 0, 0];
+        }
         let r = 0, g = 0, b = 0;
         if (cleaned.length === 3) {
-            r = parseInt(cleaned[0] + cleaned[0], 16);
-            g = parseInt(cleaned[1] + cleaned[1], 16);
-            b = parseInt(cleaned[2] + cleaned[2], 16);
+            r = parseInt(cleaned[0] + cleaned[0], 16) || 0;
+            g = parseInt(cleaned[1] + cleaned[1], 16) || 0;
+            b = parseInt(cleaned[2] + cleaned[2], 16) || 0;
         } else if (cleaned.length === 6) {
-            r = parseInt(cleaned.slice(0, 2), 16);
-            g = parseInt(cleaned.slice(2, 4), 16);
-            b = parseInt(cleaned.slice(4, 6), 16);
+            r = parseInt(cleaned.slice(0, 2), 16) || 0;
+            g = parseInt(cleaned.slice(2, 4), 16) || 0;
+            b = parseInt(cleaned.slice(4, 6), 16) || 0;
         }
         return [r, g, b];
     }
@@ -214,9 +218,26 @@ export class ColorUtils {
     }
 
     private static isInSrgbGamut(L: number, C: number, H: number): boolean {
-        const rgb = this.oklchToRgb(L, C, H);
-        // Check if all channels are within 0–255 (with a tiny tolerance for rounding)
-        return rgb.every(v => v >= -0.5 && v <= 255.5);
+        const hRad = H * (Math.PI / 180);
+        const a = C * Math.cos(hRad);
+        const b = C * Math.sin(hRad);
+
+        const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+        const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+        const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+        const l = l_ * l_ * l_;
+        const m = m_ * m_ * m_;
+        const s = s_ * s_ * s_;
+
+        const lr = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+        const lg = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+        const lb = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+        const eps = 0.001;
+        return lr >= -eps && lr <= 1 + eps &&
+               lg >= -eps && lg <= 1 + eps &&
+               lb >= -eps && lb <= 1 + eps;
     }
 
     /**
@@ -284,15 +305,16 @@ export class ColorUtils {
         return 'Fail';
     }
 
-    static getAccessibleTextColor(backgroundHex: string): string {
+    static getAccessibleTextColor(backgroundHex: string, darkTextHex: string = '#1E293B'): string {
         const rgb = this.hexToRgb(backgroundHex);
+        const darkRgb = this.hexToRgb(darkTextHex);
         const whiteContrast = this.getContrastRatio(rgb, [255, 255, 255]);
-        const darkContrast = this.getContrastRatio(rgb, [30, 41, 59]);
-        // Prefer whichever meets WCAG AA, biased toward white for aesthetics
+        const darkContrast = this.getContrastRatio(rgb, darkRgb);
+        // Prefer whichever meets WCAG AA, biased toward white for dark themes
         if (whiteContrast >= 4.5) return '#FFFFFF';
-        if (darkContrast >= 4.5) return '#1E293B';
+        if (darkContrast >= 4.5) return darkTextHex;
         // Neither meets AA, pick the higher contrast
-        return whiteContrast > darkContrast ? '#FFFFFF' : '#1E293B';
+        return whiteContrast > darkContrast ? '#FFFFFF' : darkTextHex;
     }
 
     // ─── Seeded PRNG (for deterministic K-Means++) ───────────

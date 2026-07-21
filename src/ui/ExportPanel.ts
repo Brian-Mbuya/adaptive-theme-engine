@@ -139,8 +139,8 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: [${theme.typography.fontFamily}],
-        heading: [${theme.typography.headingFontFamily}],
+        sans: [${theme.typography.fontFamily.split(',').map(f => `'${f.trim().replace(/^['"]|['"]$/g, '')}'`).join(', ')}],
+        heading: [${theme.typography.headingFontFamily.split(',').map(f => `'${f.trim().replace(/^['"]|['"]$/g, '')}'`).join(', ')}],
       },
       borderRadius: {
         'theme-small': '${theme.styles.borderRadius.small}',
