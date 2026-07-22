@@ -1,5 +1,3 @@
-import type TesseractType from 'tesseract.js';
-
 /**
  * Handles logo processing: OCR extraction of the organization name
  * and smart cropping of text elements.

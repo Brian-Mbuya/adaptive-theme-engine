@@ -5,4 +5,13 @@ export { StyleGenerator } from './generator/StyleGenerator';
 export { ThemeApplier } from './theme/ThemeApplier';
 export { ColorUtils } from './util/ColorUtils';
 export { UniSubmitThemeMapper } from './adapter/UniSubmitThemeMapper';
-export type { Theme, ColorScale, ThemeColors, TypographyStyle, StylePreset } from './model/Theme';
+export type {
+    Color,
+    Theme,
+    ColorScale,
+    ColorHarmony,
+    ThemeColors,
+    ThemeTypography,
+    ThemeStyles,
+    ThemeStyle,
+} from './model/Theme';

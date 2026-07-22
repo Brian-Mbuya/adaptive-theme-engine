@@ -29,7 +29,7 @@ describe('ColorUtils', () => {
     });
 
     it('performs sRGB gamut clamping for high chroma OKLCH', () => {
-        const [L, C, H] = ColorUtils.gamutClampOklch(0.6, 0.45, 120);
+        const [, C] = ColorUtils.gamutClampOklch(0.6, 0.45, 120);
         expect(C).toBeLessThan(0.45);
         const hex = ColorUtils.safeOklchToHex(0.6, 0.45, 120);
         expect(hex).toMatch(/^#[0-9A-F]{6}$/);

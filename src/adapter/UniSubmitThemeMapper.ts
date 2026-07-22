@@ -64,9 +64,12 @@ export class UniSubmitThemeMapper {
             '--bg': canvas,
             '--surface': surface,
             '--surface-solid': surface,
-            '--surface-muted': colors.neutralScale[850] || colors.neutralScale[800],
-            '--surface-2': colors.neutralScale[800],
-            '--bg-elevated': colors.neutralScale[850] || colors.neutralScale[800],
+            // Surface ladder, dark → light: canvas(950) < surface(900) < elevated/muted(800)
+            // < surface-2(700). There is no 850 stop in ColorScale, and collapsing these onto
+            // one value would flatten UniSubmit's depth layering — so surface-2 steps to 700.
+            '--surface-muted': colors.neutralScale[800],
+            '--surface-2': colors.neutralScale[700],
+            '--bg-elevated': colors.neutralScale[800],
             '--text': text,
             '--text-muted': textMuted,
             '--text-subtle': textSubtle,
